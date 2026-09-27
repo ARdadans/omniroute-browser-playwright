@@ -7,13 +7,11 @@ ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0 \
     PORT=20128 \
     DATA_DIR=/app/data \
-    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    DISPLAY=:99 \
+    COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
 WORKDIR /app
-
-# ============================================================
-# System dependencies
-# ============================================================
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -22,6 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     openssl \
     dumb-init \
+    xvfb \
     fonts-liberation \
     fonts-noto \
     fonts-noto-cjk \
@@ -47,9 +46,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# ============================================================
-# Clone OmniRoute
-# ============================================================
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 RUN git clone \
     --depth 1 \
@@ -57,42 +54,17 @@ RUN git clone \
     "${OMNIROUTE_REPO_URL}" \
     /app
 
-# ============================================================
-# Install npm dependencies
-# ============================================================
+RUN pnpm install --frozen-lockfile
 
-RUN if [ -f package-lock.json ]; then \
-        npm ci; \
-    else \
-        npm install; \
-    fi
+RUN pnpm exec playwright install chromium
 
-# ============================================================
-# Install Chromium
-# ============================================================
+RUN pnpm run build
 
-RUN npx playwright install chromium
+RUN mkdir -p /app/data /ms-playwright \
+    && chown -R node:node /app /ms-playwright
 
-# ============================================================
-# Build OmniRoute
-# ============================================================
-
-RUN npm run build
-
-# ============================================================
-# Runtime directories
-# ============================================================
-
-RUN mkdir -p \
-        /app/data \
-        /ms-playwright \
-    && chown -R node:node \
-        /app \
-        /ms-playwright
-
-# ============================================================
-# Non-root runtime
-# ============================================================
+COPY start.sh /usr/local/bin/docker-start.sh
+RUN chmod +x /usr/local/bin/docker-start.sh
 
 USER node
 
@@ -100,4 +72,4 @@ EXPOSE 20128
 
 ENTRYPOINT ["dumb-init", "--"]
 
-CMD ["npm", "start"]
+CMD ["/usr/local/bin/docker-start.sh"]
