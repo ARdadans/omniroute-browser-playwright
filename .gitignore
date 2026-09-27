@@ -1,0 +1,25 @@
+# Generated OmniRoute source
+.omniroute/
+
+# Local data
+data/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+.kilo
